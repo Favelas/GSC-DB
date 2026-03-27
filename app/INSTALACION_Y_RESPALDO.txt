@@ -1,0 +1,230 @@
+================================================================================
+   GESTIÓN SOLAR DEL CARIBE S.A.S.
+   GUÍA DE INSTALACIÓN Y DESPLIEGUE — WINDOWS
+   Sistema de Gestión Solar Interna v1.0
+================================================================================
+
+ÍNDICE
+  1. Requisitos del Sistema
+  2. Instalación Paso a Paso
+  3. Estructura del Proyecto
+  4. Credenciales por Defecto
+  5. Cómo Exportar / Respaldar la Base de Datos
+  6. Crear Ejecutable (.exe) para Distribución
+  7. Solución de Problemas Comunes
+
+================================================================================
+1. REQUISITOS DEL SISTEMA
+================================================================================
+
+  Sistema Operativo : Windows 10 / 11 (64-bit)
+  Python            : 3.10 o superior  →  https://www.python.org/downloads/
+  Espacio en disco  : ~200 MB (incluyendo dependencias)
+  RAM               : 256 MB mínimo
+
+  IMPORTANTE: Al instalar Python, marcar la casilla
+  "Add Python to PATH" en el instalador.
+
+================================================================================
+2. INSTALACIÓN PASO A PASO
+================================================================================
+
+PASO 1 — Descargar/Copiar el proyecto
+--------------------------------------
+  Copie la carpeta "solar_app" completa a su equipo.
+  Ejemplo: C:\SolarCaribe\solar_app\
+
+PASO 2 — Abrir Terminal
+--------------------------------------
+  Presione Win + R → escriba "cmd" → Enter
+  Navegue a la carpeta del proyecto:
+
+    cd C:\SolarCaribe\solar_app
+
+PASO 3 — Crear entorno virtual (recomendado)
+--------------------------------------
+  python -m venv venv
+  venv\Scripts\activate
+
+  (Verá "(venv)" al inicio del prompt)
+
+PASO 4 — Instalar dependencias
+--------------------------------------
+  pip install -r requirements.txt
+
+  Esto instala:
+    • customtkinter  →  Interfaz gráfica moderna
+    • openpyxl       →  Exportación a Excel
+    • matplotlib     →  Gráficos de generación
+    • Pillow         →  Soporte de imágenes
+
+PASO 5 — Ejecutar la aplicación
+--------------------------------------
+  python main.py
+
+  La primera vez se creará automáticamente el archivo
+  "solar_caribe.db" con todas las tablas y el usuario admin.
+
+================================================================================
+3. ESTRUCTURA DEL PROYECTO
+================================================================================
+
+  solar_app/
+  ├── main.py                        ← Punto de entrada
+  ├── requirements.txt               ← Dependencias
+  ├── solar_caribe.db                ← Base de datos (se crea automáticamente)
+  │
+  └── app/
+      ├── database.py                ← Gestor de BD (todas las queries)
+      ├── theme.py                   ← Colores, fuentes, constantes de diseño
+      ├── exportar.py                ← Excel y reportes de texto
+      │
+      └── ui/
+          ├── login_window.py        ← Pantalla de login
+          ├── main_window.py         ← Ventana principal + sidebar
+          ├── widgets.py             ← Componentes reutilizables
+          │
+          └── pages/
+              ├── dashboard.py       ← Panel principal con KPIs
+              ├── clientes.py        ← CRUD de clientes
+              ├── proyectos.py       ← CRUD de instalaciones
+              ├── historial.py       ← Registro de consumo mensual
+              ├── mantenimientos.py  ← Registro de visitas técnicas
+              ├── expediente.py      ← Expediente completo + gráfico
+              └── exportar_page.py   ← Exportación Excel e informes
+
+================================================================================
+4. CREDENCIALES POR DEFECTO
+================================================================================
+
+  Usuario    : admin
+  Contraseña : admin123
+
+  IMPORTANTE: Cambie la contraseña inmediatamente en producción.
+  Para cambiarla, abra el archivo solar_caribe.db con un cliente SQLite
+  (como DB Browser for SQLite) y actualice el campo password_hash de la
+  tabla Usuarios con el hash SHA-256 de la nueva contraseña.
+
+  Generador de hash SHA-256 online: https://emn178.github.io/online-tools/sha256.html
+
+================================================================================
+5. CÓMO EXPORTAR / RESPALDAR LA BASE DE DATOS
+================================================================================
+
+La base de datos es un único archivo: solar_caribe.db
+Ubicado en la misma carpeta que main.py.
+
+--- RESPALDO MANUAL (el más sencillo) ---
+
+  1. CIERRE la aplicación completamente.
+  2. Copie el archivo solar_caribe.db a su destino de respaldo:
+       • USB / Disco externo
+       • Google Drive / OneDrive / Dropbox
+       • Carpeta de red compartida
+
+  Se recomienda nombrarlo con la fecha:
+    solar_caribe_RESPALDO_2024-11-15.db
+
+--- RESPALDO AUTOMÁTICO CON SCRIPT ---
+
+  Cree un archivo "backup.bat" en la carpeta del proyecto con este contenido:
+
+    @echo off
+    set FECHA=%date:~-4%-%date:~3,2%-%date:~0,2%
+    copy "solar_caribe.db" "C:\Respaldos\solar_caribe_%FECHA%.db"
+    echo Respaldo creado exitosamente.
+    pause
+
+  Ejecútelo o prográmelo en el Programador de Tareas de Windows para
+  que corra automáticamente cada día.
+
+--- EXPORTAR DATOS A EXCEL ---
+
+  Desde dentro de la aplicación:
+    Menú "Exportar" → Botón "Exportar a Excel" en cualquier tabla.
+
+  Los archivos se guardan automáticamente en:
+    C:\Users\[SuUsuario]\Documents\Solar_Caribe_[Tabla]_[FechaHora].xlsx
+
+--- IMPORTAR RESPALDO ---
+
+  Para restaurar un respaldo:
+  1. CIERRE la aplicación.
+  2. Reemplace el archivo solar_caribe.db actual con el respaldo.
+  3. Abra la aplicación normalmente.
+
+--- VER Y EDITAR LA BD DIRECTAMENTE ---
+
+  Herramienta gratuita recomendada: DB Browser for SQLite
+  Descarga: https://sqlitebrowser.org/dl/
+
+  Permite:
+    • Ver todas las tablas y registros
+    • Ejecutar consultas SQL
+    • Exportar datos a CSV/Excel directamente
+    • Editar registros manualmente
+
+================================================================================
+6. CREAR EJECUTABLE .EXE PARA DISTRIBUCIÓN
+================================================================================
+
+Si desea distribuir la aplicación sin que el usuario tenga Python instalado:
+
+PASO 1 — Instalar PyInstaller
+--------------------------------------
+  pip install pyinstaller
+
+PASO 2 — Generar el ejecutable
+--------------------------------------
+  pyinstaller --onefile --windowed --name "SolarCaribe" ^
+    --add-data "app;app" main.py
+
+  Opciones:
+    --onefile   → Un solo archivo .exe
+    --windowed  → Sin consola de fondo
+    --name      → Nombre del ejecutable
+
+PASO 3 — Encontrar el ejecutable
+--------------------------------------
+  Se genera en la carpeta: dist\SolarCaribe.exe
+
+  NOTA: La primera ejecución puede tardar unos segundos.
+  El archivo solar_caribe.db se creará junto al .exe.
+
+================================================================================
+7. SOLUCIÓN DE PROBLEMAS COMUNES
+================================================================================
+
+PROBLEMA: "ModuleNotFoundError: No module named 'customtkinter'"
+SOLUCIÓN: Ejecute en la terminal:
+  pip install customtkinter
+
+PROBLEMA: El gráfico no aparece en el expediente
+SOLUCIÓN: Instale matplotlib:
+  pip install matplotlib
+
+PROBLEMA: No puedo exportar a Excel
+SOLUCIÓN: Instale openpyxl:
+  pip install openpyxl
+
+PROBLEMA: La aplicación no inicia / pantalla en blanco
+SOLUCIÓN: Asegúrese de ejecutar desde la carpeta del proyecto:
+  cd C:\SolarCaribe\solar_app
+  python main.py
+
+PROBLEMA: Error "database is locked"
+SOLUCIÓN: Cierre cualquier otro programa que tenga abierto el archivo .db
+
+PROBLEMA: Olvidé la contraseña de admin
+SOLUCIÓN: 
+  1. Abra DB Browser for SQLite
+  2. Abra solar_caribe.db
+  3. Vaya a la tabla Usuarios
+  4. El hash SHA-256 de "admin123" es:
+     240be518fabd2724ddb6f04eeb1da5967448d7e831c08c8fa822809f74c720a
+  5. Pegue ese valor en la columna password_hash del usuario admin
+
+================================================================================
+   Soporte Técnico: Gestión Solar del Caribe S.A.S.
+   Versión: 1.0.0 | Desarrollado con Python + CustomTkinter + SQLite
+================================================================================
