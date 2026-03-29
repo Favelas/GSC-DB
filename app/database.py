@@ -1,6 +1,7 @@
 import sqlite3
+import os
 
-class GestionBaseDatos:
+class DatabaseManager:
     def __init__(self, db_name="solar_caribe.db"):
         self.db_name = db_name
         self.inicializar_db()
@@ -29,7 +30,7 @@ class GestionBaseDatos:
         self.ejecutar_migraciones()
 
     def ejecutar_migraciones(self):
-        """Agrega las nuevas columnas para el ciclo Air-e y análisis inteligente"""
+        """Agrega las nuevas columnas para el ciclo Air-e (Barranquilla)"""
         columnas = [
             ("fecha_inicio_ciclo", "TEXT"),
             ("fecha_fin_ciclo", "TEXT"),
@@ -47,13 +48,15 @@ class GestionBaseDatos:
 
         for nombre, tipo in columnas:
             if nombre not in existentes:
-                cursor.execute(f"ALTER TABLE consumos ADD COLUMN {nombre} {tipo} DEFAULT 0")
+                try:
+                    cursor.execute(f"ALTER TABLE consumos ADD COLUMN {nombre} {tipo} DEFAULT 0")
+                    print(f"✅ Columna {nombre} sincronizada.")
+                except: pass
         
         conexion.commit()
         conexion.close()
 
     def guardar_registro_completo(self, datos):
-        """Inserta el registro sincronizado con Air-e"""
         try:
             conexion = sqlite3.connect(self.db_name)
             cursor = conexion.cursor()

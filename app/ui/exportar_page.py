@@ -1,46 +1,63 @@
 import customtkinter as ctk
+from tkinter import filedialog, messagebox
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib import colors
 
 class ExportarPage(ctk.CTkFrame):
-    # ... (inicialización similar a las otras)
+    def __init__(self, parent):
+        super().__init__(parent, fg_color="transparent")
+        self.setup_ui()
+
+    def setup_ui(self):
+        self.grid_columnconfigure(0, weight=1)
+        ctk.CTkLabel(self, text="Exportar Factura GSC", font=("Helvetica", 24, "bold")).pack(pady=20)
+        
+        self.btn_pdf = ctk.CTkButton(self, text="Generar PDF High-Impact", 
+                                     command=self.demo_pdf, fg_color="#2c3e50")
+        self.btn_pdf.pack(pady=10)
 
     def format_cop(self, valor):
-        """Formatea números a Moneda Colombiana: $ 1.000.000"""
+        """Moneda COP: $ 1.000.000"""
         return f"$ {valor:,.0f}".replace(",", ".")
 
-    def generar_pdf_high_impact(self, datos_factura):
-        c = canvas.Canvas("Factura_GSC.pdf", pagesize=LETTER)
+    def demo_pdf(self):
+        # Datos simulados para la prueba
+        datos = {'cliente': "Fabian Velasquez", 'red': 150.0, 'total': 285000}
+        path = filedialog.asksaveasfilename(defaultextension=".pdf")
+        if path:
+            self.crear_pdf(path, datos)
+
+    def crear_pdf(self, path, d):
+        c = canvas.Canvas(path, pagesize=LETTER)
         
-        # ENCABEZADO
-        c.setFont("Helvetica-Bold", 20)
+        # Encabezado GSC
+        c.setFont("Helvetica-Bold", 22)
+        c.setFillColor(colors.hexColor("#2c3e50"))
         c.drawString(50, 750, "GESTIÓN SOLAR DEL CARIBE")
         
-        # RECUADRO DE PAGO (HIGHLIGHT)
-        c.setFillColor(colors.hexColor("#2c3e50"))
-        c.rect(50, 630, 500, 60, fill=1)
+        # BLOQUE RESALTADO (TOTAL A PAGAR)
+        c.setFillColor(colors.hexColor("#2ecc71"))
+        c.rect(50, 640, 500, 60, fill=1, stroke=0)
         c.setFillColor(colors.white)
-        c.setFont("Helvetica-Bold", 18)
-        total_texto = f"TOTAL A PAGAR: {self.format_cop(datos_factura['total'])}"
-        c.drawCentredString(300, 655, total_texto)
+        c.setFont("Helvetica-Bold", 20)
+        c.drawCentredString(300, 665, f"TOTAL A PAGAR: {self.format_cop(d['total'])}")
 
-        # DETALLES
+        # Nota Técnica y Subsidio
         c.setFillColor(colors.black)
         c.setFont("Helvetica", 12)
-        c.drawString(50, 600, f"Periodo: {datos_factura['inicio']} al {datos_factura['fin']}")
-        c.drawString(50, 580, f"Consumo de Red: {datos_factura['red']} kWh")
+        c.drawString(50, 610, f"Cliente: {d['cliente']}")
         
-        # NOTA DE SUBSIDIO
-        if datos_factura['red'] <= 173:
-            c.setFillColor(colors.green)
-            c.drawString(50, 550, "¡OPTIMIZACIÓN POR SUBSIDIO APLICADA (173 kWh)!")
-        
-        # FOOTER DE CONTACTO
+        if d['red'] <= 173:
+            c.setFillColor(colors.darkgreen)
+            c.drawString(50, 580, "✓ APLICADO: Tarifa de Subsistencia (Menos de 173 kWh)")
+
+        # Footer de contacto
         c.setStrokeColor(colors.lightgrey)
-        c.line(50, 100, 550, 100)
+        c.line(50, 80, 550, 80)
         c.setFillColor(colors.grey)
-        c.setFont("Helvetica-Oblique", 10)
-        c.drawString(50, 80, "¿Dudas? WhatsApp: +57 3XX XXX XXXX | Email: soporte@gsc.com")
+        c.setFont("Helvetica", 9)
+        c.drawCentredString(300, 60, "Contacto Soporte: WhatsApp +57 [Número] | Email: soporte@gsc.com")
         
         c.save()
+        messagebox.showinfo("Éxito", "PDF generado correctamente.")
