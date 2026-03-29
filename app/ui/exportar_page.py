@@ -102,88 +102,105 @@ class ExportarPage(ctk.CTkFrame):
             command=lambda v: self._actualizar_precios(v))
         self.cb_cli_fac.pack(fill="x", pady=(3, 12))
 
+        # ── Fila 1: consumo total / generado GSC / tarifa Air-e ───────
         g = ctk.CTkFrame(fac_inner, fg_color="transparent")
         g.pack(fill="x")
         g.columnconfigure((0, 1, 2), weight=1)
 
-        # Campos de facturación
-        ctk.CTkLabel(g, text="kWh Consumidos *", font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).grid(
-                         row=0, column=0, sticky="w", padx=(0, 6))
-        self.e_kwh = ctk.CTkEntry(g, height=34, fg_color=COLORS["bg_input"],
-                                   border_color=COLORS["border_primary"],
-                                   text_color=COLORS["text_primary"],
-                                   font=FONTS["body_medium"])
-        self.e_kwh.grid(row=1, column=0, sticky="ew", padx=(0, 6), pady=(3, 10))
-        self.e_kwh.bind("<KeyRelease>", lambda e: self._calcular_preview())
+        def _entry(parent, label, attr, row, col, padx=(0,0), placeholder=""):
+            ctk.CTkLabel(parent, text=label, font=FONTS["label"],
+                         text_color=COLORS["text_secondary"]).grid(
+                             row=row, column=col, sticky="w",
+                             padx=padx, pady=(8, 0))
+            e = ctk.CTkEntry(parent, height=34, fg_color=COLORS["bg_input"],
+                              border_color=COLORS["border_primary"],
+                              text_color=COLORS["text_primary"],
+                              font=FONTS["body_medium"],
+                              placeholder_text=placeholder)
+            e.grid(row=row+1, column=col, sticky="ew",
+                   padx=padx, pady=(3, 6))
+            e.bind("<KeyRelease>", lambda ev: self._calcular_preview())
+            setattr(self, attr, e)
 
-        ctk.CTkLabel(g, text="Tarifa Air-e ($/kWh)", font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).grid(
-                         row=0, column=1, sticky="w", padx=6)
-        self.e_tarifa_aire = ctk.CTkEntry(
-            g, height=34, fg_color=COLORS["bg_input"],
-            border_color=COLORS["border_primary"],
-            text_color=COLORS["text_primary"], font=FONTS["body_medium"])
-        self.e_tarifa_aire.grid(row=1, column=1, sticky="ew",
-                                padx=6, pady=(3, 10))
-        self.e_tarifa_aire.bind("<KeyRelease>", lambda e: self._calcular_preview())
+        _entry(g, "kWh Consumidos *",      "e_kwh",       0, 0, (0, 6),  "Ej: 320")
+        _entry(g, "kWh Generados GSC *",   "e_kwh_gsc",   0, 1, (6, 6),  "Ej: 240")
+        _entry(g, "Tarifa Air-e ($/kWh)",  "e_tarifa_aire", 0, 2, (6, 0), "Ej: 890")
 
-        ctk.CTkLabel(g, text="Tarifa GSC ($/kWh)", font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).grid(
-                         row=0, column=2, sticky="w", padx=(6, 0))
-        self.e_tarifa_gsc = ctk.CTkEntry(
-            g, height=34, fg_color=COLORS["bg_input"],
-            border_color=COLORS["border_primary"],
-            text_color=COLORS["text_primary"], font=FONTS["body_medium"])
-        self.e_tarifa_gsc.grid(row=1, column=2, sticky="ew",
-                               padx=(6, 0), pady=(3, 10))
-        self.e_tarifa_gsc.bind("<KeyRelease>", lambda e: self._calcular_preview())
+        # ── Fila 2: tarifa GSC / cargos adicionales / descuentos ──────
+        g2 = ctk.CTkFrame(fac_inner, fg_color="transparent")
+        g2.pack(fill="x")
+        g2.columnconfigure((0, 1, 2), weight=1)
 
-        # Campo deducciones
-        ctk.CTkLabel(fac_inner, text="Deducciones Air-e ($):",
-                     font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).pack(anchor="w")
-        self.e_deducciones = ctk.CTkEntry(
-            fac_inner, placeholder_text="Descuentos, subsidios, rebajas a restar del total Air-e",
-            height=34, fg_color=COLORS["bg_input"],
-            border_color=COLORS["border_primary"],
-            text_color=COLORS["text_primary"], font=FONTS["body_small"])
-        self.e_deducciones.pack(fill="x", pady=(3, 12))
-        self.e_deducciones.bind("<KeyRelease>", lambda e: self._calcular_preview())
+        _entry(g2, "Tarifa GSC ($/kWh)",          "e_tarifa_gsc",  0, 0, (0, 6),  "Ej: 650")
+        _entry(g2, "Cargos Adicionales Red ($)",   "e_cargos",      0, 1, (6, 6),  "Alumb. público, fijos…")
+        _entry(g2, "Descuentos Adicionales Red ($)","e_descuentos", 0, 2, (6, 0),  "Saldos a favor…")
 
-        # Preview de cálculo
+        # ── Preview dinámico ──────────────────────────────────────────
         prev_card = ctk.CTkFrame(fac_inner, fg_color=COLORS["bg_secondary"],
-                                  corner_radius=10)
-        prev_card.pack(fill="x", pady=(0, 14))
+                                  corner_radius=10, border_width=1,
+                                  border_color=COLORS["border_primary"])
+        prev_card.pack(fill="x", pady=(8, 14))
         prev_inner = ctk.CTkFrame(prev_card, fg_color="transparent")
         prev_inner.pack(fill="x", padx=16, pady=12)
 
-        ctk.CTkLabel(prev_inner, text="Vista Previa de Cálculo:",
+        ctk.CTkLabel(prev_inner, text="Vista Previa de Cálculo",
                      font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).pack(anchor="w", pady=(0, 6))
+                     text_color=COLORS["text_secondary"]).pack(anchor="w", pady=(0, 8))
 
-        def row_calc(parent, label, var_attr, color=COLORS["text_primary"]):
+        def _kpi_row(parent, label, attr, color=COLORS["text_primary"], bold=False):
             f = ctk.CTkFrame(parent, fg_color="transparent")
             f.pack(fill="x", pady=2)
-            ctk.CTkLabel(f, text=label, font=FONTS["body_small"],
-                         text_color=COLORS["text_secondary"],
-                         width=200, anchor="w").pack(side="left")
-            lbl = ctk.CTkLabel(f, text="$0", font=FONTS["label"],
+            ctk.CTkLabel(f, text=label,
+                         font=FONTS["label"] if bold else FONTS["body_small"],
+                         text_color=COLORS["text_secondary"] if not bold else COLORS["text_primary"],
+                         width=260, anchor="w").pack(side="left")
+            lbl = ctk.CTkLabel(f, text="$0",
+                                font=FONTS["title_small"] if bold else FONTS["label"],
                                 text_color=color)
             lbl.pack(side="right")
-            setattr(self, var_attr, lbl)
+            setattr(self, attr, lbl)
 
-        row_calc(prev_inner, "Total Air-e (con deducciones):",
-                 "lbl_total_aire", COLORS["warning"])
-        row_calc(prev_inner, "Total GSC:", "lbl_total_gsc",
-                 COLORS["accent_primary"])
+        # Sección 1 — comparativa
+        ctk.CTkLabel(prev_inner, text="① Comparativa de Eficiencia",
+                     font=FONTS["body_small"],
+                     text_color=COLORS["info"]).pack(anchor="w", pady=(0, 2))
+        _kpi_row(prev_inner, "Si pagara 100% a Air-e:",      "lbl_bruto_aire",  COLORS["danger"])
+        _kpi_row(prev_inner, "Paga a GSC (consumo total):",  "lbl_total_gsc",   COLORS["accent_primary"])
+        _kpi_row(prev_inner, "→ Ahorro Directo GSC:",        "lbl_ahorro_directo", COLORS["success"])
 
-        sep2 = ctk.CTkFrame(prev_inner, height=1,
-                             fg_color=COLORS["border_primary"])
-        sep2.pack(fill="x", pady=6)
+        ctk.CTkFrame(prev_inner, height=1,
+                      fg_color=COLORS["border_primary"]).pack(fill="x", pady=6)
 
-        row_calc(prev_inner, "💰  Monto Ahorrado:", "lbl_ahorro",
-                 COLORS["success"])
+        # Sección 2 — excedente (condicional)
+        self.lbl_sec2_titulo = ctk.CTkLabel(prev_inner,
+                                             text="② Cobro Red (Excedente): —",
+                                             font=FONTS["body_small"],
+                                             text_color=COLORS["warning"])
+        self.lbl_sec2_titulo.pack(anchor="w", pady=(0, 2))
+        _kpi_row(prev_inner, "Excedente (kWh sin cubrir):",  "lbl_excedente_kwh", COLORS["warning"])
+        _kpi_row(prev_inner, "Costo excedente Air-e:",       "lbl_costo_exc",     COLORS["warning"])
+        _kpi_row(prev_inner, "+ Cargos adicionales red:",    "lbl_cargos_prev",   COLORS["warning"])
+        _kpi_row(prev_inner, "− Descuentos red:",            "lbl_desc_prev",     COLORS["success"])
+        _kpi_row(prev_inner, "→ Total a pagar a red:",       "lbl_total_red",     COLORS["warning"])
+
+        ctk.CTkFrame(prev_inner, height=1,
+                      fg_color=COLORS["border_primary"]).pack(fill="x", pady=6)
+
+        # Sección 3 — resumen
+        ctk.CTkLabel(prev_inner, text="③ Resumen General",
+                     font=FONTS["body_small"],
+                     text_color=COLORS["accent_primary"]).pack(anchor="w", pady=(0, 2))
+        _kpi_row(prev_inner, "Total GSC + Red (pago real):", "lbl_total_real", COLORS["text_primary"], bold=True)
+        _kpi_row(prev_inner, "💰 Ahorro Neto Final:",         "lbl_ahorro_neto", COLORS["success"], bold=True)
+
+        # Nota de cobertura total
+        self.lbl_cobertura = ctk.CTkLabel(
+            prev_inner,
+            text="",
+            font=FONTS["body_small"],
+            text_color=COLORS["success"],
+            wraplength=420)
+        self.lbl_cobertura.pack(anchor="w", pady=(6, 0))
 
         ActionButton(fac_inner, text="📄  Generar Factura PDF",
                      command=self._generar_factura_pdf).pack(fill="x")
@@ -259,7 +276,7 @@ class ExportarPage(ctk.CTkFrame):
     # ─────────────────────────────────────────────────────────────────────────
 
     def _actualizar_precios(self, nombre: str):
-        """Auto-carga las tarifas del cliente seleccionado."""
+        """Auto-carga tarifas del cliente seleccionado."""
         c = self.cli_map.get(nombre)
         if not c:
             return
@@ -270,21 +287,66 @@ class ExportarPage(ctk.CTkFrame):
         self._calcular_preview()
 
     def _calcular_preview(self, *_):
+        """
+        Nueva lógica con excedente:
+          excedente    = kwh_consumidos - kwh_gsc
+          costo_exc    = (excedente * t_aire + cargos - descuentos)  si exc > 0
+          total_real   = total_gsc + costo_exc
+          ahorro_neto  = bruto_aire - total_real
+        """
         try:
-            kwh  = float(self.e_kwh.get() or 0)
-            t_aire = float(self.e_tarifa_aire.get() or 0)
-            t_gsc  = float(self.e_tarifa_gsc.get() or 0)
-            ded    = float(self.e_deducciones.get() or 0)
+            kwh       = float(self.e_kwh.get() or 0)
+            kwh_gsc   = float(self.e_kwh_gsc.get() or 0)
+            t_aire    = float(self.e_tarifa_aire.get() or 0)
+            t_gsc     = float(self.e_tarifa_gsc.get() or 0)
+            cargos    = float(self.e_cargos.get() or 0)
+            desc      = float(self.e_descuentos.get() or 0)
         except ValueError:
             return
 
-        total_aire = max(kwh * t_aire - ded, 0)
-        total_gsc  = kwh * t_gsc
-        ahorro     = max(total_aire - total_gsc, 0)
+        # Sección 1 — comparativa
+        bruto_aire   = kwh * t_aire          # si pagara todo a Air-e
+        total_gsc    = kwh * t_gsc           # cuota GSC por consumo total
+        ahorro_directo = max(bruto_aire - total_gsc, 0)
 
-        self.lbl_total_aire.configure(text=f"${total_aire:,.0f}")
+        self.lbl_bruto_aire.configure(text=f"${bruto_aire:,.0f}")
         self.lbl_total_gsc.configure(text=f"${total_gsc:,.0f}")
-        self.lbl_ahorro.configure(text=f"${ahorro:,.0f}")
+        self.lbl_ahorro_directo.configure(text=f"${ahorro_directo:,.0f}")
+
+        # Sección 2 — excedente
+        excedente = kwh - kwh_gsc            # kWh no cubiertos por paneles
+
+        if excedente > 0:
+            costo_exc  = excedente * t_aire
+            total_red  = max(costo_exc + cargos - desc, 0)
+            self.lbl_sec2_titulo.configure(
+                text=f"② Cobro Red (Excedente: {excedente:.1f} kWh):",
+                text_color=COLORS["warning"])
+            self.lbl_excedente_kwh.configure(text=f"{excedente:.1f} kWh")
+            self.lbl_costo_exc.configure(text=f"${costo_exc:,.0f}")
+            self.lbl_cargos_prev.configure(text=f"${cargos:,.0f}")
+            self.lbl_desc_prev.configure(text=f"${desc:,.0f}")
+            self.lbl_total_red.configure(text=f"${total_red:,.0f}")
+            self.lbl_cobertura.configure(text="")
+        else:
+            total_red = 0
+            self.lbl_sec2_titulo.configure(
+                text="② Cobro Red: ¡Cobertura completa!",
+                text_color=COLORS["success"])
+            for lbl in [self.lbl_excedente_kwh, self.lbl_costo_exc,
+                         self.lbl_cargos_prev, self.lbl_desc_prev,
+                         self.lbl_total_red]:
+                lbl.configure(text="$0")
+            self.lbl_cobertura.configure(
+                text="🎉 ¡Felicidades! Su sistema GSC cubrió el 100% "
+                     "de su consumo este mes.")
+
+        # Sección 3 — resumen
+        total_real  = total_gsc + total_red
+        ahorro_neto = max(bruto_aire - total_real, 0)
+
+        self.lbl_total_real.configure(text=f"${total_real:,.0f}")
+        self.lbl_ahorro_neto.configure(text=f"${ahorro_neto:,.0f}")
 
     def _generar_factura_pdf(self):
         nombre_cli = self.cb_cli_fac.get()
@@ -293,20 +355,22 @@ class ExportarPage(ctk.CTkFrame):
             messagebox.showwarning("GSC", "Seleccione un cliente.")
             return
         try:
-            kwh    = float(self.e_kwh.get() or 0)
-            t_aire = float(self.e_tarifa_aire.get() or 0)
-            t_gsc  = float(self.e_tarifa_gsc.get() or 0)
-            ded    = float(self.e_deducciones.get() or 0)
+            kwh     = float(self.e_kwh.get() or 0)
+            kwh_gsc = float(self.e_kwh_gsc.get() or 0)
+            t_aire  = float(self.e_tarifa_aire.get() or 0)
+            t_gsc   = float(self.e_tarifa_gsc.get() or 0)
+            cargos  = float(self.e_cargos.get() or 0)
+            desc    = float(self.e_descuentos.get() or 0)
         except ValueError:
             messagebox.showerror("GSC", "Ingrese valores numéricos válidos.")
             return
 
-        total_aire = max(kwh * t_aire - ded, 0)
-        total_gsc  = kwh * t_gsc
-        ahorro     = max(total_aire - total_gsc, 0)
+        if kwh <= 0 or t_aire <= 0 or t_gsc <= 0:
+            messagebox.showwarning("GSC",
+                                   "Complete al menos kWh consumidos y ambas tarifas.")
+            return
 
-        ruta = _pdf_factura(cliente, kwh, t_aire, t_gsc, ded,
-                             total_aire, total_gsc, ahorro)
+        ruta = _pdf_factura(cliente, kwh, kwh_gsc, t_aire, t_gsc, cargos, desc)
         if ruta:
             if messagebox.askyesno("PDF Generado",
                                     f"Guardado en:\n{ruta}\n\n¿Abrir?"):
@@ -458,8 +522,13 @@ def _excel(columnas, datos, nombre) -> str | None:
         return None
 
 
-def _pdf_factura(cliente, kwh, t_aire, t_gsc, ded,
-                  total_aire, total_gsc, ahorro) -> str | None:
+def _pdf_factura(cliente, kwh, kwh_gsc, t_aire, t_gsc, cargos, desc) -> str | None:
+    """
+    PDF estructurado en 3 secciones:
+      1. Comparativa de eficiencia
+      2. Cobro de red por excedente (condicional)
+      3. Resumen general + ahorro neto
+    """
     try:
         from reportlab.lib.pagesizes import letter
         from reportlab.lib import colors
@@ -467,9 +536,20 @@ def _pdf_factura(cliente, kwh, t_aire, t_gsc, ded,
         from reportlab.platypus import (SimpleDocTemplate, Paragraph, Spacer,
                                          Table, TableStyle, HRFlowable)
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
-        from reportlab.lib.enums import TA_CENTER, TA_RIGHT
+        from reportlab.lib.enums import TA_CENTER, TA_RIGHT, TA_LEFT
 
-        ts = datetime.now().strftime("%Y%m%d_%H%M%S")
+        # ── Cálculos ─────────────────────────────────────────────
+        excedente   = max(kwh - kwh_gsc, 0)
+        bruto_aire  = kwh * t_aire
+        total_gsc   = kwh * t_gsc
+        costo_exc   = excedente * t_aire if excedente > 0 else 0
+        total_red   = max(costo_exc + cargos - desc, 0) if excedente > 0 else 0
+        total_real  = total_gsc + total_red
+        ahorro_neto = max(bruto_aire - total_real, 0)
+        cobertura_pct = min(kwh_gsc / kwh * 100, 100) if kwh > 0 else 0
+
+        # ── Archivo ───────────────────────────────────────────────
+        ts   = datetime.now().strftime("%Y%m%d_%H%M%S")
         path = os.path.join(
             _docs_dir(),
             f"Factura_{cliente.get('cedula_nit','cli')}_{ts}.pdf")
@@ -478,117 +558,199 @@ def _pdf_factura(cliente, kwh, t_aire, t_gsc, ded,
                                 leftMargin=2*cm, rightMargin=2*cm,
                                 topMargin=1.5*cm, bottomMargin=1.5*cm)
         styles = getSampleStyleSheet()
-        verde  = colors.HexColor("#00C896")
-        oscuro = colors.HexColor("#0D1117")
-        gris   = colors.HexColor("#8B949E")
 
-        titulo_st = ParagraphStyle("tit", parent=styles["Title"],
-                                    textColor=verde, fontSize=18,
-                                    spaceAfter=2)
-        sub_st    = ParagraphStyle("sub", parent=styles["Normal"],
-                                    textColor=gris, fontSize=9,
-                                    alignment=TA_CENTER)
-        label_st  = ParagraphStyle("lbl", parent=styles["Normal"],
-                                    textColor=colors.HexColor("#E6EDF3"),
-                                    fontSize=10)
-        val_st    = ParagraphStyle("val", parent=styles["Normal"],
-                                    textColor=colors.white, fontSize=10,
-                                    alignment=TA_RIGHT)
+        # Colores corporativos
+        C_VERDE  = colors.HexColor("#00C896")
+        C_OSCURO = colors.HexColor("#0D1117")
+        C_CARD   = colors.HexColor("#1C2333")
+        C_CARD2  = colors.HexColor("#21262D")
+        C_GRIS   = colors.HexColor("#8B949E")
+        C_WARN   = colors.HexColor("#D29922")
+        C_DANGER = colors.HexColor("#F85149")
+        C_BLANCO = colors.white
+        C_VERDE_OSC = colors.HexColor("#0D4B35")
+
+        def st(name, **kw):
+            return ParagraphStyle(name, parent=styles["Normal"], **kw)
+
+        tit_st   = st("tit",  textColor=C_VERDE,  fontSize=18, fontName="Helvetica-Bold",
+                       spaceAfter=2, alignment=TA_CENTER)
+        sub_st   = st("sub",  textColor=C_GRIS,   fontSize=9,  alignment=TA_CENTER)
+        sec_st   = st("sec",  textColor=C_VERDE,  fontSize=11, fontName="Helvetica-Bold",
+                       spaceBefore=14, spaceAfter=4)
+        body_st  = st("body", textColor=C_BLANCO, fontSize=9,  leading=14)
+        note_st  = st("note", textColor=C_VERDE,  fontSize=10, fontName="Helvetica-Bold",
+                       backColor=C_VERDE_OSC, leftIndent=10, rightIndent=10,
+                       spaceBefore=6, spaceAfter=6)
+
+        def tbl(data, col_widths, row_styles=None):
+            t = Table(data, colWidths=col_widths)
+            base = [
+                ("BACKGROUND",    (0, 0), (-1, 0),  C_VERDE_OSC),
+                ("TEXTCOLOR",     (0, 0), (-1, 0),  C_VERDE),
+                ("FONTNAME",      (0, 0), (-1, 0),  "Helvetica-Bold"),
+                ("FONTSIZE",      (0, 0), (-1, -1),  9),
+                ("BACKGROUND",    (0, 1), (-1, -1),  C_CARD),
+                ("ROWBACKGROUNDS",(0, 1), (-1, -1),  [C_CARD, C_CARD2]),
+                ("TEXTCOLOR",     (0, 1), (-1, -1),  C_BLANCO),
+                ("GRID",          (0, 0), (-1, -1), 0.4, colors.HexColor("#30363D")),
+                ("ALIGN",         (1, 0), (1, -1),  "RIGHT"),
+                ("TOPPADDING",    (0, 0), (-1, -1),  5),
+                ("BOTTOMPADDING", (0, 0), (-1, -1),  5),
+                ("LEFTPADDING",   (0, 0), (-1, -1),  8),
+            ]
+            if row_styles:
+                base.extend(row_styles)
+            t.setStyle(TableStyle(base))
+            return t
 
         story = []
 
-        # Encabezado
-        story.append(Paragraph("GESTIÓN SOLAR DEL CARIBE S.A.S.", titulo_st))
+        # ── ENCABEZADO ────────────────────────────────────────────
+        story.append(Paragraph("GESTIÓN SOLAR DEL CARIBE S.A.S.", tit_st))
         story.append(Paragraph(
-            "Barranquilla, Colombia  |  www.gestion-solar-caribe.com", sub_st))
-        story.append(HRFlowable(width="100%", color=verde,
-                                 thickness=1.5, spaceAfter=12))
+            "Barranquilla, Colombia  |  Factura de Servicio Solar",
+            sub_st))
+        story.append(HRFlowable(width="100%", color=C_VERDE,
+                                 thickness=2, spaceAfter=10))
 
+        # Fecha + número de factura
         story.append(Paragraph(
-            f"<b>FACTURA DE AHORRO SOLAR</b>  —  "
-            f"{datetime.now().strftime('%d/%m/%Y')}",
-            ParagraphStyle("fac", parent=styles["Normal"],
-                            textColor=colors.white, fontSize=12,
-                            spaceAfter=12)))
+            f"<b>FACTURA DE AHORRO SOLAR</b>  ·  "
+            f"Fecha: {datetime.now().strftime('%d/%m/%Y')}  ·  "
+            f"Período de consumo ingresado",
+            st("fh", textColor=C_BLANCO, fontSize=10, alignment=TA_CENTER,
+                spaceAfter=10)))
 
-        # Datos cliente
+        # Datos del cliente
         cli_data = [
-            ["Cliente:", cliente.get("nombre_titular", "N/A")],
-            ["Cédula/NIT:", cliente.get("cedula_nit", "N/A")],
-            ["Dirección:", (cliente.get("direccion_completa") or "N/A") +
-             f" — {cliente.get('barrio_sector') or ''}"],
-            ["Teléfono:", cliente.get("telefono", "N/A")],
+            ["DATOS DEL CLIENTE", ""],
+            ["Titular:",         cliente.get("nombre_titular", "N/A")],
+            ["Cédula / NIT:",    cliente.get("cedula_nit", "N/A")],
+            ["Dirección:",       (cliente.get("direccion_completa") or "N/A") +
+                                 (f" — {cliente.get('barrio_sector','')}" if
+                                  cliente.get("barrio_sector") else "")],
+            ["Teléfono:",        cliente.get("telefono", "N/A")],
+            ["Email:",           cliente.get("email", "N/A")],
         ]
-        cli_tbl = Table(cli_data, colWidths=[4*cm, 12*cm])
-        cli_tbl.setStyle(TableStyle([
-            ("TEXTCOLOR",   (0, 0), (-1, -1), colors.HexColor("#8B949E")),
-            ("TEXTCOLOR",   (1, 0), (1, -1),  colors.white),
-            ("FONTSIZE",    (0, 0), (-1, -1),  9),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
-        ]))
-        story.append(cli_tbl)
-        story.append(Spacer(1, 16))
+        story.append(tbl(cli_data, [4.5*cm, 12.5*cm]))
+        story.append(Spacer(1, 10))
 
-        # Tabla de cálculo
-        calc_data = [
-            ["Concepto", "Detalle", "Valor"],
-            ["kWh Consumidos", f"{kwh:.2f} kWh", "—"],
-            ["Tarifa Air-e", f"${t_aire:,.2f}/kWh", "—"],
-            ["Subtotal Air-e", "", f"${kwh*t_aire:,.0f}"],
-            ["Deducciones Air-e", "Subsidios / descuentos", f"- ${ded:,.0f}"],
-            ["TOTAL AIR-E", "", f"${total_aire:,.0f}"],
-            ["Tarifa GSC", f"${t_gsc:,.2f}/kWh", "—"],
-            ["TOTAL GSC", "", f"${total_gsc:,.0f}"],
-        ]
-        calc_tbl = Table(calc_data, colWidths=[6*cm, 7*cm, 4*cm])
-        calc_tbl.setStyle(TableStyle([
-            ("BACKGROUND",  (0, 0), (-1, 0),  colors.HexColor("#0D4B35")),
-            ("TEXTCOLOR",   (0, 0), (-1, 0),  verde),
-            ("FONTNAME",    (0, 0), (-1, 0),  "Helvetica-Bold"),
-            ("BACKGROUND",  (0, 1), (-1, -1), colors.HexColor("#1C2333")),
-            ("TEXTCOLOR",   (0, 1), (-1, -1), colors.white),
-            ("FONTSIZE",    (0, 0), (-1, -1),  9),
-            ("ROWBACKGROUNDS", (0, 1), (-1, -1),
-             [colors.HexColor("#1C2333"), colors.HexColor("#21262D")]),
-            ("GRID",        (0, 0), (-1, -1), 0.5,
-             colors.HexColor("#30363D")),
-            ("ALIGN",       (2, 0), (2, -1), "RIGHT"),
-            ("FONTNAME",    (0, 5), (-1, 5), "Helvetica-Bold"),
-            ("FONTNAME",    (0, 7), (-1, 7), "Helvetica-Bold"),
-            ("TOPPADDING",  (0, 0), (-1, -1), 5),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 5),
-        ]))
-        story.append(calc_tbl)
-        story.append(Spacer(1, 16))
-
-        # Caja de ahorro
-        ahorro_data = [["💰  MONTO AHORRADO ESTE MES", f"${ahorro:,.0f}"]]
-        ah_tbl = Table(ahorro_data, colWidths=[13*cm, 4*cm])
-        ah_tbl.setStyle(TableStyle([
-            ("BACKGROUND",    (0, 0), (-1, -1), colors.HexColor("#0D4B35")),
-            ("TEXTCOLOR",     (0, 0), (-1, -1), verde),
-            ("FONTNAME",      (0, 0), (-1, -1), "Helvetica-Bold"),
-            ("FONTSIZE",      (0, 0), (-1, -1), 14),
-            ("ALIGN",         (1, 0), (1, 0), "RIGHT"),
-            ("TOPPADDING",    (0, 0), (-1, -1), 10),
-            ("BOTTOMPADDING", (0, 0), (-1, -1), 10),
-            ("LEFTPADDING",   (0, 0), (-1, -1), 12),
-        ]))
-        story.append(ah_tbl)
-        story.append(Spacer(1, 20))
-
-        # Pie de página
-        story.append(HRFlowable(width="100%", color=verde,
-                                 thickness=0.5, spaceAfter=6))
+        # ═══════════════════════════════════════════════════════════
+        # SECCIÓN 1 — COMPARATIVA DE EFICIENCIA
+        # ═══════════════════════════════════════════════════════════
+        story.append(Paragraph("① Comparativa de Eficiencia", sec_st))
         story.append(Paragraph(
-            f"Generado el {datetime.now().strftime('%d/%m/%Y %H:%M')}  |  "
-            "Sistema GSC v2.0  |  Gestión Solar del Caribe S.A.S.",
-            ParagraphStyle("footer", parent=styles["Normal"],
-                            textColor=gris, fontSize=7,
-                            alignment=TA_CENTER)))
+            f"Su sistema generó <b>{kwh_gsc:.1f} kWh</b> de los "
+            f"<b>{kwh:.1f} kWh</b> consumidos este período "
+            f"(<b>{cobertura_pct:.1f}%</b> de cobertura).",
+            body_st))
+        story.append(Spacer(1, 6))
+
+        sec1_data = [
+            ["Concepto", "Valor"],
+            [f"Si pagara TODO a Air-e  ({kwh:.1f} kWh × ${t_aire:,.2f})",
+             f"${bruto_aire:,.0f}"],
+            [f"Paga a GSC  ({kwh:.1f} kWh × ${t_gsc:,.2f})",
+             f"${total_gsc:,.0f}"],
+            ["→  Ahorro Directo GSC", f"${bruto_aire - total_gsc:,.0f}"],
+        ]
+        sec1_tbl = tbl(sec1_data, [13*cm, 4*cm], row_styles=[
+            ("TEXTCOLOR",  (0, 3), (-1, 3), C_VERDE),
+            ("FONTNAME",   (0, 3), (-1, 3), "Helvetica-Bold"),
+            ("BACKGROUND", (0, 3), (-1, 3), C_VERDE_OSC),
+        ])
+        story.append(sec1_tbl)
+
+        # ═══════════════════════════════════════════════════════════
+        # SECCIÓN 2 — COBRO DE RED (condicional)
+        # ═══════════════════════════════════════════════════════════
+        if excedente > 0:
+            story.append(Paragraph(
+                f"② Aproximado Cobro de Red  (Excedente: {excedente:.1f} kWh)",
+                st("sec2", textColor=C_WARN, fontSize=11,
+                    fontName="Helvetica-Bold", spaceBefore=14, spaceAfter=4)))
+            story.append(Paragraph(
+                f"Su sistema no cubrió <b>{excedente:.1f} kWh</b>. "
+                "Estos kWh serán cobrados por Air-e a tarifa normal, "
+                "más los cargos fijos aplicables.",
+                body_st))
+            story.append(Spacer(1, 6))
+
+            sec2_data = [
+                ["Concepto", "Valor"],
+                [f"Excedente no cubierto  ({excedente:.1f} kWh × ${t_aire:,.2f})",
+                 f"${costo_exc:,.0f}"],
+                ["+ Cargos adicionales red (alumb. público, fijos, etc.)",
+                 f"${cargos:,.0f}"],
+                ["− Descuentos / saldos a favor red",
+                 f"− ${desc:,.0f}"],
+                ["→  Total a pagar a la red Air-e",
+                 f"${total_red:,.0f}"],
+            ]
+            sec2_tbl = tbl(sec2_data, [13*cm, 4*cm], row_styles=[
+                ("TEXTCOLOR",  (0, 4), (-1, 4), C_WARN),
+                ("FONTNAME",   (0, 4), (-1, 4), "Helvetica-Bold"),
+            ])
+            story.append(sec2_tbl)
+        else:
+            story.append(Spacer(1, 10))
+            story.append(Paragraph(
+                "🎉  ¡Felicidades! Su sistema GSC cubrió el 100% de su "
+                "consumo este mes. No generó ningún cobro adicional a la red.",
+                note_st))
+
+        # ═══════════════════════════════════════════════════════════
+        # SECCIÓN 3 — RESUMEN GENERAL
+        # ═══════════════════════════════════════════════════════════
+        story.append(Paragraph("③ Resumen General", sec_st))
+
+        sec3_data = [
+            ["Concepto", "Valor"],
+            ["Cuota GSC (por consumo total)", f"${total_gsc:,.0f}"],
+            ["Cobro adicional a red Air-e",   f"${total_red:,.0f}"],
+            ["TOTAL REAL A PAGAR (GSC + Red)", f"${total_real:,.0f}"],
+            ["Si no tuviera paneles (pago Air-e puro)", f"${bruto_aire:,.0f}"],
+            ["💰  AHORRO NETO FINAL", f"${ahorro_neto:,.0f}"],
+        ]
+        sec3_tbl = tbl(sec3_data, [13*cm, 4*cm], row_styles=[
+            ("FONTNAME",   (0, 3), (-1, 3), "Helvetica-Bold"),
+            ("FONTSIZE",   (0, 3), (-1, 3), 10),
+            ("BACKGROUND", (0, 3), (-1, 3), colors.HexColor("#1A3A4A")),
+            ("TEXTCOLOR",  (0, 5), (-1, 5), C_VERDE),
+            ("FONTNAME",   (0, 5), (-1, 5), "Helvetica-Bold"),
+            ("FONTSIZE",   (0, 5), (-1, 5), 12),
+            ("BACKGROUND", (0, 5), (-1, 5), C_VERDE_OSC),
+            ("TOPPADDING", (0, 5), (-1, 5), 8),
+            ("BOTTOMPADDING", (0, 5), (-1, 5), 8),
+        ])
+        story.append(sec3_tbl)
+
+        # ── PIE DE PÁGINA ─────────────────────────────────────────
+        story.append(Spacer(1, 16))
+        story.append(HRFlowable(width="100%", color=C_VERDE,
+                                 thickness=0.5, spaceAfter=6))
+
+        # Firmas
+        firma_data = [["Firma Técnico GSC:", "_______________________",
+                        "Recibido / Cliente:", "_______________________"]]
+        firma_tbl = Table(firma_data, colWidths=[3.5*cm, 6*cm, 3.5*cm, 4*cm])
+        firma_tbl.setStyle(TableStyle([
+            ("TEXTCOLOR",     (0, 0), (-1, -1), C_GRIS),
+            ("FONTSIZE",      (0, 0), (-1, -1), 8),
+            ("TOPPADDING",    (0, 0), (-1, -1), 6),
+        ]))
+        story.append(firma_tbl)
+
+        story.append(Spacer(1, 8))
+        story.append(Paragraph(
+            f"Generado: {datetime.now().strftime('%d/%m/%Y %H:%M')}  |  "
+            "GSC v2.1  |  Gestión Solar del Caribe S.A.S.",
+            st("footer", textColor=C_GRIS, fontSize=7, alignment=TA_CENTER)))
 
         doc.build(story)
         return path
+
     except ImportError:
         return None
     except Exception as e:
