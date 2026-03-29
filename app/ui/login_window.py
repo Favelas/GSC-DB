@@ -4,6 +4,7 @@ Ventana de Login — Gestión Solar del Caribe S.A.S.
 
 import customtkinter as ctk
 from tkinter import messagebox
+# Verifica que theme.py esté directamente en la carpeta /app
 from app.theme import COLORS, FONTS
 
 
@@ -151,8 +152,9 @@ class LoginWindow(ctk.CTk):
             self._abrir_app_principal()
         else:
             self.lbl_error.configure(text="✗  Credenciales incorrectas. Intente nuevamente.")
-            self.btn_login.configure(state="normal", text="  INGRESAR AL SISTEMA")
+            self.btn_login.configure(state="normal", text="   INGRESAR AL SISTEMA")
             self.entry_pass.delete(0, "end")
+            self.entry_pass.focus() # <-- Añade esto para que el usuario no tenga que clickear de nuevo
 
     def _abrir_app_principal(self):
         from app.ui.main_window import MainWindow

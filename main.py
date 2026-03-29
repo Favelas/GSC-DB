@@ -1,30 +1,31 @@
+"""
+main.py — Gestión Solar del Caribe S.A.S.  v2.0
+Punto de entrada principal.
+"""
+
 import sys
 import os
 import customtkinter as ctk
 
-# Configuración de Rutas para evitar errores de importación
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, BASE_DIR)
 
 from app.database import DatabaseManager
 from app.ui.login_window import LoginWindow
 
+
 def main():
-    """Punto de entrada principal de GSC App."""
-    
-    # Configuración de apariencia
     ctk.set_appearance_mode("dark")
     ctk.set_default_color_theme("blue")
 
-    # Inicialización de la base de datos
-    db = DatabaseManager()
-    
-    # Iniciar con la ventana de Login
+    db = DatabaseManager()   # auto-migración en el constructor
+
     try:
-        login_app = LoginWindow(db)
-        login_app.mainloop()
+        LoginWindow(db).mainloop()
     except Exception as e:
-        print(f"Error al ejecutar la interfaz: {e}")
+        print(f"Error al iniciar GSC: {e}")
+        raise
+
 
 if __name__ == "__main__":
     main()
