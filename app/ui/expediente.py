@@ -1,6 +1,6 @@
 """
-expediente.py — Expediente completo del cliente.
-Gráfico de generación vs promesa 240 kWh usando datos de tabla 'consumos'.
+expediente.py — Expediente completo del cliente v3.0
+Optimización: layouts expandibles, mejor rendimiento visual.
 """
 
 import customtkinter as ctk
@@ -20,7 +20,7 @@ class ExpedientePage(ctk.CTkFrame):
         cont = ctk.CTkFrame(self, fg_color="transparent")
         cont.pack(fill="both", expand=True, padx=24, pady=16)
 
-        ctk.CTkLabel(cont, text="📁  Expediente del Cliente",
+        ctk.CTkLabel(cont, text="Expediente del Cliente",
                      font=FONTS["title_large"],
                      text_color=COLORS["text_primary"]).pack(anchor="w", pady=(0, 14))
 
@@ -28,12 +28,14 @@ class ExpedientePage(ctk.CTkFrame):
         main.pack(fill="both", expand=True)
         main.columnconfigure(0, weight=1)
         main.columnconfigure(1, weight=3)
+        main.rowconfigure(0, weight=1)
 
         # Selector
         sel = ctk.CTkFrame(main, fg_color=COLORS["bg_card"],
                             corner_radius=12, border_width=1,
                             border_color=COLORS["border_primary"])
         sel.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        sel.rowconfigure(2, weight=1)
 
         ctk.CTkLabel(sel, text="Seleccionar Cliente",
                      font=FONTS["title_small"],
@@ -85,7 +87,7 @@ class ExpedientePage(ctk.CTkFrame):
             w.destroy()
         ctk.CTkLabel(
             self.exp_panel,
-            text="☀  Seleccione un cliente para ver su expediente",
+            text="☀  Seleccione un cliente",
             font=FONTS["title_small"],
             text_color=COLORS["text_muted"]).pack(expand=True, pady=100)
 
@@ -103,10 +105,9 @@ class ExpedientePage(ctk.CTkFrame):
                      text_color=COLORS["text_primary"]).pack(anchor="w")
         ctk.CTkLabel(inner,
                      text=(f"CC/NIT: {cliente['cedula_nit']}  |  "
-                           f"Tel: {cliente.get('telefono','N/A')}  |  "
-                           f"Email: {cliente.get('email','N/A')}"),
+                           f"Tel: {cliente.get('telefono','N/A')}"),
                      font=FONTS["body_small"],
-                     text_color=COLORS["text_muted"]).pack(anchor="w", pady=(2, 2))
+                     text_color=COLORS["text_muted"]).pack(anchor="w", pady=(2, 0))
         ctk.CTkLabel(inner,
                      text=(f"📍 {cliente.get('direccion_completa','N/A')} — "
                            f"{cliente.get('barrio_sector','')}  |  "
@@ -128,20 +129,16 @@ class ExpedientePage(ctk.CTkFrame):
             p = proyectos[0]
             self._seccion_proyecto(inner, p)
 
-        # Gráfico de generación
+        # Gráfico
         historial = self.db.obtener_datos_grafico_cliente(cliente["id"])
         if historial:
             self._seccion_grafico(inner, historial)
-        else:
-            ctk.CTkLabel(inner, text="Sin registros de consumo aún.",
-                         font=FONTS["body_small"],
-                         text_color=COLORS["text_muted"]).pack(anchor="w", pady=8)
 
         # Mantenimientos
         if proyectos:
             mants = self.db.obtener_mantenimientos(proyectos[0]["id"])
             if mants:
-                self._seccion_mantenimientos(inner, mants, proyectos[0], cliente)
+                self._seccion_mantenimientos(inner, mants)
 
     def _seccion_proyecto(self, parent, p: dict):
         card = ctk.CTkFrame(parent, fg_color=COLORS["bg_secondary"],
@@ -190,9 +187,8 @@ class ExpedientePage(ctk.CTkFrame):
                          font=FONTS["caption"],
                          text_color=COLORS["text_muted"]).pack(anchor="w", padx=16)
 
-        # Botón abrir fotos
         if p.get("ruta_fotos_entrega"):
-            ActionButton(card, text="📂  Abrir Carpeta de Fotos",
+            ActionButton(card, text="📂  Abrir Carpeta",
                          command=lambda: self._abrir(p["ruta_fotos_entrega"]),
                          variant="ghost").pack(anchor="w", padx=16, pady=(6, 12))
         else:
@@ -205,10 +201,10 @@ class ExpedientePage(ctk.CTkFrame):
         gframe.pack(fill="x", pady=(0, 14))
 
         ctk.CTkLabel(gframe,
-                     text="📊  Generación Solar — kWh vs Promesa 240 kWh",
+                     text="📊  Generación Solar — Últimos 12 meses",
                      font=FONTS["title_small"],
                      text_color=COLORS["text_primary"]).pack(
-                         anchor="w", padx=16, pady=(12, 4))
+                         anchor="w", padx=16, pady=(12, 8))
 
         try:
             import matplotlib
@@ -219,26 +215,20 @@ class ExpedientePage(ctk.CTkFrame):
             labels = [f"{str(r['mes']).zfill(2)}/{r['anio']}"
                       for r in historial]
             valores = [r.get("kwh_consumidos", 0) or 0 for r in historial]
-            promesa = [240] * len(labels)
 
-            fig, ax = plt.subplots(figsize=(7, 2.8))
+            fig, ax = plt.subplots(figsize=(8, 3))
             fig.patch.set_facecolor("#1C2333")
             ax.set_facecolor("#21262D")
             x = range(len(labels))
-            ax.bar(x, valores, color="#00C896", alpha=0.85,
-                   width=0.5, label="Generado")
-            ax.plot(x, promesa, color="#FFD700", linewidth=1.5,
-                    linestyle="--", label="Meta 240 kWh")
+            ax.bar(x, valores, color="#00C896", alpha=0.85, width=0.6)
             ax.set_xticks(list(x))
-            ax.set_xticklabels(labels, color="#8B949E", fontsize=7)
+            ax.set_xticklabels(labels, color="#8B949E", fontsize=8)
             ax.tick_params(colors="#8B949E", labelsize=8)
             for spine in ["top", "right"]:
                 ax.spines[spine].set_visible(False)
             for spine in ["bottom", "left"]:
                 ax.spines[spine].set_color("#30363D")
             ax.set_ylabel("kWh", color="#8B949E", fontsize=9)
-            ax.legend(facecolor="#1C2333", edgecolor="#30363D",
-                       labelcolor="#8B949E", fontsize=8)
             fig.tight_layout(pad=1.0)
 
             canvas = FigureCanvasTkAgg(fig, master=gframe)
@@ -246,12 +236,12 @@ class ExpedientePage(ctk.CTkFrame):
             canvas.get_tk_widget().pack(fill="x", padx=12, pady=(0, 12))
 
         except ImportError:
-            # Fallback con barras CTk
+            # Fallback sin matplotlib
             for r in historial[-8:]:
                 kwh = r.get("kwh_consumidos", 0) or 0
-                pct = min(kwh / 240, 1.0)
-                color = (COLORS["success"] if pct >= 0.9
-                         else COLORS["warning"] if pct >= 0.6
+                pct = min(kwh / 300, 1.0)
+                color = (COLORS["success"] if kwh >= 200
+                         else COLORS["warning"] if kwh >= 100
                          else COLORS["danger"])
                 fila = ctk.CTkFrame(gframe, fg_color="transparent")
                 fila.pack(fill="x", padx=16, pady=2)
@@ -270,12 +260,12 @@ class ExpedientePage(ctk.CTkFrame):
             ctk.CTkFrame(gframe, height=8,
                           fg_color="transparent").pack()
 
-    def _seccion_mantenimientos(self, parent, mants, proyecto, cliente):
+    def _seccion_mantenimientos(self, parent, mants):
         card = ctk.CTkFrame(parent, fg_color=COLORS["bg_secondary"],
                              corner_radius=10)
         card.pack(fill="x", pady=(0, 14))
 
-        ctk.CTkLabel(card, text="🛠  Historial de Mantenimientos",
+        ctk.CTkLabel(card, text="🛠  Mantenimientos",
                      font=FONTS["title_small"],
                      text_color=COLORS["text_primary"]).pack(
                          anchor="w", padx=16, pady=(12, 8))
@@ -300,8 +290,7 @@ class ExpedientePage(ctk.CTkFrame):
             bot.pack(fill="x", padx=12, pady=(0, 6))
             txt = (f"Estr: {labels_e.get(m.get('estado_estructura',3),'?')}  |  "
                    f"Cab: {labels_e.get(m.get('estado_cableado',3),'?')}  |  "
-                   f"Limpieza: {'✓' if m.get('limpieza_paneles') else '✗'}  |  "
-                   f"Tierra: {m.get('continuidad_tierra_ohm',0)} Ω")
+                   f"Limpieza: {'✓' if m.get('limpieza_paneles') else '✗'}")
             ctk.CTkLabel(bot, text=txt, font=FONTS["caption"],
                          text_color=COLORS["text_muted"]).pack(side="left")
 

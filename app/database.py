@@ -1,9 +1,10 @@
 """
 database.py — Gestión Solar del Caribe S.A.S.
-Versión 2.1 — Migración segura de consumos con campos de ciclo Air-e.
+Versión 3.0 — Contraseñas seguras con SHA-256 + campos de ciclo Air-e.
 """
 
 import sqlite3
+import hashlib
 import os
 
 
@@ -17,6 +18,11 @@ class DatabaseManager:
         conn.row_factory = sqlite3.Row
         conn.execute("PRAGMA foreign_keys = ON")
         return conn
+
+    @staticmethod
+    def _hash_password(password: str) -> str:
+        """Genera hash SHA-256 de contraseña."""
+        return hashlib.sha256(password.encode()).hexdigest()
 
     def _inicializar_db(self):
         with self._conectar() as conn:
@@ -60,7 +66,6 @@ class DatabaseManager:
                     fecha_registro TEXT DEFAULT CURRENT_TIMESTAMP,
                     FOREIGN KEY (cliente_id) REFERENCES clientes(id)
                 )""")
-            # v2.1 — nuevas columnas ciclo Air-e
             self._migrar(cur, "consumos", {
                 "fecha_inicio_ciclo":     "TEXT",
                 "fecha_fin_ciclo":        "TEXT",
@@ -90,12 +95,20 @@ class DatabaseManager:
                 CREATE TABLE IF NOT EXISTS usuarios (
                     id INTEGER PRIMARY KEY,
                     usuario TEXT UNIQUE,
-                    password TEXT,
+                    password_hash TEXT,
                     nombre_completo TEXT
                 )""")
+            self._migrar(cur, "usuarios", {
+                "fecha_cambio_pwd": "TEXT",
+            })
+
+            # Crear usuario admin con contraseña segura si no existe
             if cur.execute("SELECT COUNT(*) FROM usuarios").fetchone()[0] == 0:
-                cur.execute("INSERT INTO usuarios (usuario, password, nombre_completo) "
-                            "VALUES ('admin', 'admin123', 'Administrador GSC')")
+                admin_hash = self._hash_password("admin123")
+                cur.execute("""
+                    INSERT INTO usuarios (usuario, password_hash, nombre_completo)
+                    VALUES (?, ?, ?)""",
+                    ("admin", admin_hash, "Administrador GSC"))
             conn.commit()
 
     def _migrar(self, cursor, tabla, columnas):
@@ -208,7 +221,7 @@ class DatabaseManager:
                  d.get("retie", "Pendiente"), d.get("ruta_fotos"), pid))
             conn.commit()
 
-    # ── CONSUMOS v2.1 ─────────────────────────────────────────────────────────
+    # ── CONSUMOS v3.0 ─────────────────────────────────────────────────────────
 
     def obtener_consumos(self, cliente_id=None):
         with self._conectar() as conn:
@@ -349,11 +362,49 @@ class DatabaseManager:
             r["valor_base_gsc"] = 0
         return rows
 
-    # ── LOGIN ─────────────────────────────────────────────────────────────────
+    # ── LOGIN Y USUARIOS ──────────────────────────────────────────────────────
 
     def verify_login(self, usuario, password):
+        """Verifica credenciales con hash SHA-256."""
+        password_hash = self._hash_password(password)
         with self._conectar() as conn:
             r = conn.execute(
-                "SELECT * FROM usuarios WHERE usuario=? AND password=?",
-                (usuario, password)).fetchone()
+                "SELECT * FROM usuarios WHERE usuario=? AND password_hash=?",
+                (usuario, password_hash)).fetchone()
+            return dict(r) if r else None
+
+    def cambiar_contrasena(self, usuario_id, contraseña_actual, contraseña_nueva):
+        """Cambia contraseña del usuario después de validar la actual."""
+        with self._conectar() as conn:
+            # Obtener usuario actual
+            user = conn.execute(
+                "SELECT password_hash FROM usuarios WHERE id=?",
+                (usuario_id,)).fetchone()
+            
+            if not user:
+                return False, "Usuario no encontrado"
+            
+            # Validar contraseña actual
+            hash_actual = self._hash_password(contraseña_actual)
+            if user[0] != hash_actual:
+                return False, "Contraseña actual incorrecta"
+            
+            # Actualizar a nueva contraseña
+            hash_nueva = self._hash_password(contraseña_nueva)
+            from datetime import datetime
+            ahora = datetime.now().isoformat()
+            conn.execute("""
+                UPDATE usuarios 
+                SET password_hash=?, fecha_cambio_pwd=?
+                WHERE id=?""",
+                (hash_nueva, ahora, usuario_id))
+            conn.commit()
+            return True, "Contraseña actualizada correctamente"
+
+    def obtener_usuario(self, usuario_id):
+        """Obtiene datos del usuario (sin hash de pwd)."""
+        with self._conectar() as conn:
+            r = conn.execute(
+                "SELECT id, usuario, nombre_completo, fecha_cambio_pwd FROM usuarios WHERE id=?",
+                (usuario_id,)).fetchone()
             return dict(r) if r else None

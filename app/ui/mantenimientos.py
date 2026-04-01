@@ -1,6 +1,6 @@
 """
-mantenimientos.py — Gestión documental de visitas técnicas.
-Campos: ruta_fotos (carpeta) + ruta_acta_pdf (archivo PDF).
+mantenimientos.py — Gestión documental de visitas técnicas v3.0
+Optimización: layouts expandibles, espaciado mejorado.
 """
 
 import customtkinter as ctk
@@ -22,7 +22,7 @@ class MantenimientosPage(ctk.CTkFrame):
 
         hdr = ctk.CTkFrame(cont, fg_color="transparent")
         hdr.pack(fill="x", pady=(0, 14))
-        ctk.CTkLabel(hdr, text="🛠  Mantenimientos Técnicos",
+        ctk.CTkLabel(hdr, text="Mantenimientos Técnicos",
                      font=FONTS["title_large"],
                      text_color=COLORS["text_primary"]).pack(side="left")
 
@@ -31,22 +31,23 @@ class MantenimientosPage(ctk.CTkFrame):
         panels.columnconfigure(0, weight=2)
         panels.columnconfigure(1, weight=3)
 
-        # ── LISTA ─────────────────────────────────────────────────
+        # ── LISTA (expandible) ────────────────────────────────────
         left = ctk.CTkFrame(panels, fg_color=COLORS["bg_card"],
                              corner_radius=12, border_width=1,
                              border_color=COLORS["border_primary"])
         left.grid(row=0, column=0, sticky="nsew", padx=(0, 8))
+        left.rowconfigure(1, weight=1)
 
         ctk.CTkLabel(left, text="Historial de Visitas",
                      font=FONTS["title_small"],
                      text_color=COLORS["text_secondary"]).pack(
-                         anchor="w", padx=16, pady=(14, 8))
+                         anchor="w", padx=16, pady=(14, 6))
 
         self.lista_scroll = ctk.CTkScrollableFrame(
             left, fg_color="transparent")
         self.lista_scroll.pack(fill="both", expand=True, padx=8, pady=(0, 12))
 
-        # ── FORMULARIO ────────────────────────────────────────────
+        # ── FORMULARIO (expandible) ───────────────────────────────
         right = ctk.CTkScrollableFrame(
             panels, fg_color=COLORS["bg_card"], corner_radius=12)
         right.grid(row=0, column=1, sticky="nsew", padx=(8, 0))
@@ -60,7 +61,7 @@ class MantenimientosPage(ctk.CTkFrame):
                      font=FONTS["title_medium"],
                      text_color=COLORS["text_primary"]).pack(anchor="w", pady=(0, 14))
 
-        SectionTitle(inner, "▸ Proyecto Asociado").pack(anchor="w", pady=(0, 6))
+        SectionTitle(inner, "▸ Proyecto Asociado").pack(anchor="w", pady=(0, 8))
 
         proyectos = self.db.obtener_proyectos()
         self.proy_map = {}
@@ -69,39 +70,39 @@ class MantenimientosPage(ctk.CTkFrame):
             self.proy_map[key] = p["id"]
 
         ctk.CTkLabel(inner, text="Proyecto *", font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).pack(anchor="w")
+                     text_color=COLORS["text_secondary"]).pack(anchor="w", pady=(0, 2))
         self.cb_proy = ctk.CTkComboBox(
             inner,
             values=list(self.proy_map.keys()) if self.proy_map else ["Sin proyectos"],
             height=36, fg_color=COLORS["bg_input"],
             border_color=COLORS["border_primary"],
             text_color=COLORS["text_primary"], font=FONTS["body_small"])
-        self.cb_proy.pack(fill="x", pady=(3, 14))
+        self.cb_proy.pack(fill="x", pady=(0, 14))
 
-        SectionTitle(inner, "▸ Datos de Visita").pack(anchor="w", pady=(0, 6))
+        SectionTitle(inner, "▸ Datos de Visita").pack(anchor="w", pady=(0, 8))
 
         g = ctk.CTkFrame(inner, fg_color="transparent")
-        g.pack(fill="x")
+        g.pack(fill="x", pady=(0, 14))
         g.columnconfigure((0, 1), weight=1)
 
         self.f_fecha = FormField(g, "Fecha Visita *", "YYYY-MM-DD", required=True)
-        self.f_fecha.grid(row=0, column=0, sticky="ew", padx=(0, 6), pady=4)
+        self.f_fecha.grid(row=0, column=0, sticky="ew", padx=(0, 6), pady=0)
 
         self.f_tecnico = FormField(g, "Técnico Encargado *",
                                     "Nombre del técnico", required=True)
-        self.f_tecnico.grid(row=0, column=1, sticky="ew", padx=(6, 0), pady=4)
+        self.f_tecnico.grid(row=0, column=1, sticky="ew", padx=6, pady=0)
 
-        SectionTitle(inner, "▸ Inspección Técnica").pack(anchor="w", pady=(14, 6))
+        SectionTitle(inner, "▸ Inspección Técnica").pack(anchor="w", pady=(14, 8))
 
         estados_frame = ctk.CTkFrame(inner, fg_color="transparent")
-        estados_frame.pack(fill="x")
+        estados_frame.pack(fill="x", pady=(0, 14))
         estados_frame.columnconfigure((0, 1), weight=1)
 
         # Slider estructura
         ef = ctk.CTkFrame(estados_frame, fg_color="transparent")
         ef.grid(row=0, column=0, sticky="ew", padx=(0, 6))
         ctk.CTkLabel(ef, text="Estado Estructura (1–5):", font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).pack(anchor="w")
+                     text_color=COLORS["text_secondary"]).pack(anchor="w", pady=(0, 4))
         self.sl_estr = ctk.CTkSlider(ef, from_=1, to=5, number_of_steps=4,
                                       fg_color=COLORS["bg_input"],
                                       progress_color=COLORS["accent_primary"],
@@ -117,9 +118,9 @@ class MantenimientosPage(ctk.CTkFrame):
 
         # Slider cableado
         cf = ctk.CTkFrame(estados_frame, fg_color="transparent")
-        cf.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+        cf.grid(row=0, column=1, sticky="ew", padx=6)
         ctk.CTkLabel(cf, text="Estado Cableado (1–5):", font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).pack(anchor="w")
+                     text_color=COLORS["text_secondary"]).pack(anchor="w", pady=(0, 4))
         self.sl_cab = ctk.CTkSlider(cf, from_=1, to=5, number_of_steps=4,
                                      fg_color=COLORS["bg_input"],
                                      progress_color=COLORS["accent_primary"],
@@ -135,40 +136,39 @@ class MantenimientosPage(ctk.CTkFrame):
 
         # Limpieza + Tierra
         extra = ctk.CTkFrame(inner, fg_color="transparent")
-        extra.pack(fill="x", pady=8)
+        extra.pack(fill="x", pady=(0, 14))
         extra.columnconfigure((0, 1), weight=1)
 
         lf = ctk.CTkFrame(extra, fg_color="transparent")
         lf.grid(row=0, column=0, sticky="ew", padx=(0, 6))
         ctk.CTkLabel(lf, text="Limpieza de Paneles:", font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).pack(anchor="w")
+                     text_color=COLORS["text_secondary"]).pack(anchor="w", pady=(0, 4))
         self.var_limpieza = ctk.BooleanVar(value=False)
         ctk.CTkSwitch(lf, text="Realizada", variable=self.var_limpieza,
                        fg_color=COLORS["bg_input"],
                        progress_color=COLORS["accent_primary"],
                        text_color=COLORS["text_primary"],
-                       font=FONTS["body_medium"]).pack(anchor="w", pady=6)
+                       font=FONTS["body_medium"]).pack(anchor="w")
 
         self.f_tierra = FormField(extra, "Continuidad Tierra (Ω)", "Ej: 0.85")
-        self.f_tierra.grid(row=0, column=1, sticky="ew", padx=(6, 0))
+        self.f_tierra.grid(row=0, column=1, sticky="ew", padx=6, pady=0)
 
         # ── GESTIÓN DOCUMENTAL ────────────────────────────────────
-        SectionTitle(inner, "▸ Gestión Documental").pack(anchor="w", pady=(16, 6))
+        SectionTitle(inner, "▸ Gestión Documental").pack(anchor="w", pady=(14, 8))
 
-        # Carpeta de fotos
         doc_card = ctk.CTkFrame(inner, fg_color=COLORS["bg_secondary"],
                                  corner_radius=8)
-        doc_card.pack(fill="x", pady=(0, 8))
+        doc_card.pack(fill="x", pady=(0, 14))
         doc_inner = ctk.CTkFrame(doc_card, fg_color="transparent")
-        doc_inner.pack(fill="x", padx=12, pady=10)
+        doc_inner.pack(fill="x", padx=12, pady=12)
 
         ctk.CTkLabel(doc_inner, text="📸  Carpeta de Fotos:",
                      font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).pack(anchor="w")
+                     text_color=COLORS["text_secondary"]).pack(anchor="w", pady=(0, 4))
         ri1 = ctk.CTkFrame(doc_inner, fg_color="transparent")
-        ri1.pack(fill="x", pady=(3, 0))
+        ri1.pack(fill="x", pady=(0, 12))
         self.entry_fotos = ctk.CTkEntry(
-            ri1, placeholder_text="Ruta de la carpeta con las evidencias…",
+            ri1, placeholder_text="Ruta de la carpeta…",
             height=32, fg_color=COLORS["bg_input"],
             border_color=COLORS["border_primary"],
             text_color=COLORS["text_primary"], font=FONTS["body_small"])
@@ -179,15 +179,13 @@ class MantenimientosPage(ctk.CTkFrame):
                       text_color=COLORS["text_primary"],
                       command=self._sel_carpeta_fotos).pack(side="right")
 
-        # Archivo PDF del acta
         ctk.CTkLabel(doc_inner, text="📄  Acta / PDF:",
                      font=FONTS["label"],
-                     text_color=COLORS["text_secondary"]).pack(
-                         anchor="w", pady=(10, 0))
+                     text_color=COLORS["text_secondary"]).pack(anchor="w", pady=(0, 4))
         ri2 = ctk.CTkFrame(doc_inner, fg_color="transparent")
-        ri2.pack(fill="x", pady=(3, 0))
+        ri2.pack(fill="x")
         self.entry_pdf = ctk.CTkEntry(
-            ri2, placeholder_text="Ruta del archivo PDF del acta…",
+            ri2, placeholder_text="Ruta del archivo PDF…",
             height=32, fg_color=COLORS["bg_input"],
             border_color=COLORS["border_primary"],
             text_color=COLORS["text_primary"], font=FONTS["body_small"])
@@ -200,16 +198,16 @@ class MantenimientosPage(ctk.CTkFrame):
 
         # Observaciones
         SectionTitle(inner, "▸ Observaciones Críticas").pack(
-            anchor="w", pady=(14, 6))
+            anchor="w", pady=(14, 8))
         self.txt_obs = ctk.CTkTextbox(
             inner, height=80,
             fg_color=COLORS["bg_input"],
             border_color=COLORS["border_primary"],
             text_color=COLORS["text_primary"], font=FONTS["body_small"])
-        self.txt_obs.pack(fill="x")
+        self.txt_obs.pack(fill="x", pady=(0, 14))
 
         btn_row = ctk.CTkFrame(inner, fg_color="transparent")
-        btn_row.pack(fill="x", pady=(18, 0))
+        btn_row.pack(fill="x")
         ActionButton(btn_row, text="💾  Guardar Mantenimiento",
                      command=self._guardar).pack(side="left", padx=(0, 8))
         ActionButton(btn_row, text="✗  Limpiar",
@@ -239,7 +237,7 @@ class MantenimientosPage(ctk.CTkFrame):
 
         item = ctk.CTkFrame(self.lista_scroll, fg_color=COLORS["bg_secondary"],
                              corner_radius=8)
-        item.pack(fill="x", pady=2, padx=2)
+        item.pack(fill="x", pady=3, padx=2)
 
         top = ctk.CTkFrame(item, fg_color="transparent")
         top.pack(fill="x", padx=12, pady=(8, 2))
@@ -254,20 +252,19 @@ class MantenimientosPage(ctk.CTkFrame):
         bot.pack(fill="x", padx=12, pady=(0, 4))
         txt = (f"👷 {m.get('tecnico_encargado','N/A')}  |  "
                f"Estr: {estados.get(m.get('estado_estructura',3),'?')}  |  "
-               f"Cab: {estados.get(m.get('estado_cableado',3),'?')}  |  "
-               f"Tierra: {m.get('continuidad_tierra_ohm',0)} Ω")
+               f"Cab: {estados.get(m.get('estado_cableado',3),'?')}")
         ctk.CTkLabel(bot, text=txt, font=FONTS["caption"],
                      text_color=COLORS["text_muted"]).pack(anchor="w")
 
-        # Iconos de documentos vinculados
+        # Iconos documentos
         docs_row = ctk.CTkFrame(item, fg_color="transparent")
         docs_row.pack(fill="x", padx=12, pady=(0, 8))
         if m.get("ruta_fotos"):
-            ctk.CTkLabel(docs_row, text="📸 Fotos vinculadas",
+            ctk.CTkLabel(docs_row, text="📸 Fotos",
                          font=FONTS["caption"],
-                         text_color=COLORS["info"]).pack(side="left", padx=(0, 10))
+                         text_color=COLORS["info"]).pack(side="left", padx=(0, 8))
         if m.get("ruta_acta_pdf"):
-            ctk.CTkLabel(docs_row, text="📄 PDF vinculado",
+            ctk.CTkLabel(docs_row, text="📄 PDF",
                          font=FONTS["caption"],
                          text_color=COLORS["info"]).pack(side="left")
 
@@ -282,14 +279,14 @@ class MantenimientosPage(ctk.CTkFrame):
         lbl.configure(text=f"{v} — {labels.get(v,'')}")
 
     def _sel_carpeta_fotos(self):
-        r = filedialog.askdirectory(title="Carpeta de fotos de evidencia")
+        r = filedialog.askdirectory(title="Carpeta de fotos")
         if r:
             self.entry_fotos.delete(0, "end")
             self.entry_fotos.insert(0, r)
 
     def _sel_pdf(self):
         r = filedialog.askopenfilename(
-            title="Seleccionar acta en PDF",
+            title="Seleccionar PDF",
             filetypes=[("PDF", "*.pdf"), ("Todos", "*.*")])
         if r:
             self.entry_pdf.delete(0, "end")
@@ -328,7 +325,7 @@ class MantenimientosPage(ctk.CTkFrame):
 
         try:
             self.db.crear_mantenimiento(datos)
-            messagebox.showinfo("GSC", "Mantenimiento registrado correctamente.")
+            messagebox.showinfo("GSC", "Mantenimiento registrado.")
             self._limpiar()
             self._cargar_lista()
         except Exception as e:
